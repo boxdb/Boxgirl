@@ -413,7 +413,7 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
 
             if not member.id in banner_admins:
                 banner_change_date = int(time.time())
-                banner_changer_id = member.id
+            banner_changer_id = member.id
             banner_changer_name = member.name
             update_db()
             await interaction.followup.send(":white_check_mark: Banner updated successfully! Check it out!")

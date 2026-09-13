@@ -366,7 +366,7 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
 
     if member.id in banner_admins or any(role.id in banner_allowed_roles for role in member.roles):
         if member.id in banner_banned:
-            await interaction.response.send_message(":x: You are banned from changing the banner.", ephemeral=True)
+            await interaction.response.send_message("<:banner_restricted:1548578961506832525> You are banned from changing the banner.", ephemeral=True)
             return
 
         if member.id == banner_changer_id:
@@ -405,7 +405,7 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
             filename = banner.filename.replace(" ", "").replace("_", "")
             file = discord.File(fp=image_stream, filename=filename)
 
-            embed = discord.Embed(title="<:boxg:1502150406523064401> Logs ︱ Banner Updated", description=f"{member.name} (<@{member.id}>) changed my banner! - <t:{int(time.time())}:f>\n\n`ID: {member.id}`", color=0x5B0BAA)
+            embed = discord.Embed(title="<:boxg:1548579025700790382> Logs ︱ Banner Updated", description=f"{member.name} (<@{member.id}>) changed my banner! - <t:{int(time.time())}:f>\n\n`ID: {member.id}`", color=0x5B0BAA)
 
             embed.set_image(url="attachment://"+filename)
 
@@ -416,7 +416,7 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
             banner_changer_id = member.id
             banner_changer_name = member.name
             update_db()
-            await interaction.followup.send(":white_check_mark: Banner updated successfully! Check it out!")
+            await interaction.followup.send(":white_check_mark: Banner updated successfully! Check it out! <:banner:1548581156134453322>")
         except Exception as e:
                 await interaction.followup.send(f":x: Failed to update banner: `{e}`", ephemeral=True)
     else:
@@ -505,7 +505,7 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
         honey_eaten = int(redis_db.get("honey_eaten"))
         widupdate = update_widget(honey_eaten)
     embed = discord.Embed(
-        title=f"<:boxg:1502150406523064401> Logs ︱ Manual softban by {interaction.user.name}",
+        title=f"<:boxg:1548579025700790382> Logs ︱ Manual softban by {interaction.user.name}",
         description=f"{member.name} (<@{member.id}>) was banned! - <t:{int(time.time())}:f>\n\n`ID: {member.id}`\nBans performed: `{honey_eaten}`",
         color=0xD4C32A
     )
@@ -521,13 +521,13 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
         await guild.unban(user, reason="Baneo temporal del bait de #the-thing finalizado.")
     except:
         embed = discord.Embed(
-            title="<:boxg:1502150406523064401> Logs ︱ Failed to unban user",
+            title="<:boxg:1548579025700790382> Logs ︱ Failed to unban user",
             description=f"Failed to automatically unban {member.name} (<@{member.id}>)! - <t:{int(time.time())}:f>\n\n`ID: {member.id}`",
             color=0xD42A2A
         )
     else:
         embed = discord.Embed(
-            title="<:boxg:1502150406523064401> Logs ︱ User unbanned",
+            title="<:boxg:1548579025700790382> Logs ︱ User unbanned",
             description=f"Automatically unbanned {member.name} (<@{member.id}>) after 5 seconds! - <t:{int(time.time())}:f>\n\n`ID: {member.id}`",
             color=0x4CD42A
         )
@@ -550,14 +550,14 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
         await guild.unban(user, reason="Baneo temporal del bait de #the-thing finalizado.")
     except:
         embed = discord.Embed(
-            title="<:boxg:1502150406523064401> Logs ︱ Failed to unban user",
+            title="<:boxg:1548579025700790382> Logs ︱ Failed to unban user",
             description=f"Failed to manually unban <@{user.id}>! - <t:{int(time.time())}:f>\n\n`ID: {user.id}`",
             color=0xD42A2A
         )
         await interaction.followup.send(f":x: Failed to unban <@{user.id}> from {guild.name}")
     else:
         embed = discord.Embed(
-            title="<:boxg:1502150406523064401> Logs ︱ User unbanned",
+            title="<:boxg:1548579025700790382> Logs ︱ User unbanned",
             description=f"Manually unbanned (<@{user.id}>)! - <t:{int(time.time())}:f>\n\n`ID: {user.id}`",
             color=0x4CD42A
         )
@@ -578,7 +578,7 @@ async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
         except Exception as e:
             await interaction.response.send_message(f":x: Failed to delete message: `{e}`")
             embed = discord.Embed(
-                title="<:boxg:1502150406523064401> Logs ︱ Failed to delete message",
+                title="<:boxg:1548579025700790382> Logs ︱ Failed to delete message",
                 description=f"Failed to manually delete a message! - <t:{int(time.time())}:f>\n\n`Message URL: {message_url}`\n`Error: {e}`",
                 color=0xD42A2A
             )
@@ -586,7 +586,7 @@ async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
         else:
             await interaction.response.send_message(f":white_check_mark: Message deleted successfully.")
             embed = discord.Embed(
-                title=f"<:boxg:1502150406523064401> Logs ︱ Message manually deleted by {interaction.user.name}",
+                title=f"<:boxg:1548579025700790382> Logs ︱ Message manually deleted by {interaction.user.name}",
                 description=f"Manually deleted a message! - <t:{int(time.time())}:f>\n\n`Message URL: {message_url}`",
                 color=0x4CD42A
             )

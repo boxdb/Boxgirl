@@ -187,7 +187,7 @@ async def log(msg:str, channel:discord.TextChannel = None):
         await channel.send(f"{msg}")
 
 class Client(commands.Bot):
-    async def on_ready(self):
+    async def setup_hook(self):
         global online
         await log("Fetching log channel...")
         self.log_channel:discord.TextChannel = self.get_channel(log_channel_id)
@@ -298,7 +298,7 @@ intents = discord.Intents.default()
 intents.presences = True
 intents.members = True
 
-client = Client("", intents=intents)
+client = Client("", intents=intents, chunk_guilds_at_startup=False)
 client.log_channel = None
 
 # ======================= commands =======================

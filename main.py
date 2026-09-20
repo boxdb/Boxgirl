@@ -47,16 +47,16 @@ banner_banned:list      = db["banner_banned"]
 
 # ==================== change zeez ====================
 ONLINE_MSG = f"""
-# :white_check_mark: ¡Los Servidores han vuelto!
-:flag_us: The Servers are back!
-:flag_br: Os Servidores voltaram!
+# ✅ ¡Los Servidores han vuelto!
+🇺🇸 The Servers are back!
+🇧🇷 Os Servidores voltaram!
 -# <@&{role_ping_id}> - $time$
 """
 
 OFFLINE_MSG = f"""
 # <:EK_bad_servers:1502482565968302080> ¡Los Servidores están offline!
-:flag_us: The Servers are offline!
-:flag_br: Os Servidores estão offline!
+🇺🇸 The Servers are offline!
+🇧🇷 Os Servidores estão offline!
 -# <@&{role_ping_id}> - $time$
 """
 
@@ -187,7 +187,7 @@ async def log(msg:str, channel:discord.TextChannel = None):
         await channel.send(f"{msg}")
 
 class Client(commands.Bot):
-    async def setup_hook(self):
+    async def on_ready(self):
         global online
         await log("Fetching log channel...")
         self.log_channel:discord.TextChannel = self.get_channel(log_channel_id)
@@ -314,17 +314,17 @@ async def toggle_track(interaction:discord.Interaction, enable:bool):
                 status=discord.Status.idle,
                 activity=discord.CustomActivity("Tracking is currently off")
             )
-            await interaction.response.send_message(":warning: Tracking has been **disabled**.")
+            await interaction.response.send_message("⚠️ Tracking has been **disabled**.")
         else:
             track = True
             await client.change_presence(
                 status=discord.Status.online,
                 activity=(discord.CustomActivity(f"Banner by {banner_changer_name}") if banner_changer_name else None)
             )
-            await interaction.response.send_message(":white_check_mark: Tracking has been **enabled**.")
+            await interaction.response.send_message("✅ Tracking has been **enabled**.")
         update_db()
     else:
-        await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+        await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 
 @client.tree.command(name="catch-up", description="🔶 Check EK-Bot's status and update the message accordingly")
 @discord.app_commands.allowed_contexts(guilds = True)
@@ -334,14 +334,14 @@ async def catch_up_cmd(interaction:discord.Interaction):
         member = client.log_channel.guild.get_member(tracked_user_id)
         if member.status.name != "offline" and not online:
             await offline_to_online()
-            await interaction.response.send_message(":white_check_mark: EK-Bot is now **online**, I've updated my message.")
+            await interaction.response.send_message("✅ EK-Bot is now **online**, I've updated my message.")
         elif member.status.name == "offline" and online:
             await online_to_offline()
-            await interaction.response.send_message(":white_check_mark: EK-Bot is now **offline**, I've updated my message.")
+            await interaction.response.send_message("✅ EK-Bot is now **offline**, I've updated my message.")
         else:
-            await interaction.response.send_message(":warning: EK-Bot's status is the same as the last update, no changes were made.")
+            await interaction.response.send_message("⚠️ EK-Bot's status is the same as the last update, no changes were made.")
     else:
-        await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+        await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 
 @client.tree.command(name="banner", description="Set the banner for the bot")
 @discord.app_commands.describe(banner="Choose a banner for the bot (max 10 MB)")
@@ -361,7 +361,7 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
         member = guild.get_member(interaction.user.id)
 
     if not member:
-        await interaction.response.send_message(":x: Couldn't find you in Engine Kingdom.", ephemeral=True)
+        await interaction.response.send_message("❌ Couldn't find you in Engine Kingdom.", ephemeral=True)
         return
 
     if member.id in banner_admins or any(role.id in banner_allowed_roles for role in member.roles):
@@ -370,21 +370,21 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
             return
 
         if member.id == banner_changer_id:
-            await interaction.response.send_message(":x: You can't change the banner twice in a row.", ephemeral=True)
+            await interaction.response.send_message("❌ You can't change the banner twice in a row.", ephemeral=True)
             return
 
         if not member.id in banner_admins:
             cooldown = int(time.time()) - banner_change_date
             if cooldown < 60 * 60 * banner_delay_hours: # 1 hour cooldown for non-admins
-                await interaction.response.send_message(f":x: The banner can only be changed once every hour. You'll be able to change it <t:{banner_change_date + (60 * 60 * banner_delay_hours)}:R>.", ephemeral=True)
+                await interaction.response.send_message(f"❌ The banner can only be changed once every hour. You'll be able to change it <t:{banner_change_date + (60 * 60 * banner_delay_hours)}:R>.", ephemeral=True)
                 return
 
         if not banner.content_type or not banner.content_type.startswith("image/"):
-            await interaction.response.send_message(":x: Please upload a valid image file.", ephemeral=True)
+            await interaction.response.send_message("❌ Please upload a valid image file.", ephemeral=True)
             return
 
         if banner.size > 10 * 1024 * 1024:
-            await interaction.response.send_message(":x: The image file size must be less than 10 MB.", ephemeral=True)
+            await interaction.response.send_message("❌ The image file size must be less than 10 MB.", ephemeral=True)
             return
 
         try:
@@ -416,11 +416,11 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
             banner_changer_id = member.id
             banner_changer_name = member.name
             update_db()
-            await interaction.followup.send(":white_check_mark: Banner updated successfully! Check it out! <:banner:1548581156134453322>")
+            await interaction.followup.send("✅ Banner updated successfully! Check it out! <:banner:1548581156134453322>")
         except Exception as e:
-                await interaction.followup.send(f":x: Failed to update banner: `{e}`", ephemeral=True)
+                await interaction.followup.send(f"❌ Failed to update banner: `{e}`", ephemeral=True)
     else:
-        await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+        await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 
 
 # ======================= our server only =======================
@@ -430,9 +430,9 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
 async def update_vars_cmd(interaction:discord.Interaction):
     update_vars()
     if interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message(":white_check_mark: Variables updated!")
+        await interaction.response.send_message("✅ Variables updated!")
     else:
-        await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+        await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 
 @client.tree.command(name="banner-ban", description="📦 Ban a user from changing the banner", guild=discord.Object(id=banner_cmd_guild_id))
 @discord.app_commands.allowed_contexts(guilds = True)
@@ -441,16 +441,16 @@ async def banner_ban_cmd(interaction:discord.Interaction, user_id:str):
     if interaction.user.id in banner_admins:
         user = client.get_user(int(user_id))
         if not user:
-            await interaction.response.send_message(f":x: User not found.")
+            await interaction.response.send_message(f"❌ User not found.")
             return
         if user.id not in banner_banned:
             banner_banned.append(user.id)
             update_db()
-            await interaction.response.send_message(f":white_check_mark: {user.name} has been banned from changing the banner.")
+            await interaction.response.send_message(f"✅ {user.name} has been banned from changing the banner.")
         else:
-            await interaction.response.send_message(f":warning: {user.name} is already banned from changing the banner.")
+            await interaction.response.send_message(f"⚠️ {user.name} is already banned from changing the banner.")
     else:
-        await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+        await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 
 @client.tree.command(name="banner-unban", description="📦 Unban a user from changing the banner", guild=discord.Object(id=banner_cmd_guild_id))
 @discord.app_commands.allowed_contexts(guilds = True)
@@ -459,32 +459,32 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
     if interaction.user.id in banner_admins:
         user = client.get_user(int(user_id))
         if not user:
-            await interaction.response.send_message(f":x: User not found.")
+            await interaction.response.send_message(f"❌ User not found.")
             return
         if user.id in banner_banned:
             banner_banned.remove(user.id)
             update_db()
-            await interaction.response.send_message(f":white_check_mark: {user.name} has been unbanned from changing the banner.")
+            await interaction.response.send_message(f"✅ {user.name} has been unbanned from changing the banner.")
         else:
-            await interaction.response.send_message(f":warning: {user.name} is not banned from changing the banner.")
+            await interaction.response.send_message(f"⚠️ {user.name} is not banned from changing the banner.")
     else:
-        await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+        await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 
 @client.tree.command(name="softban", description="📦 Softban an user from Engine Kingdom", guild=discord.Object(id=banner_cmd_guild_id))
 @discord.app_commands.allowed_contexts(guilds = True)
 async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
     global log_channel_id
-    
+
     guild = client.get_channel(log_channel_id).guild
     member = guild.get_member(int(user_id))
     user = client.get_user(int(user_id))
-    
+
     if not member:
-        await interaction.response.send_message(f":x: User not found")
+        await interaction.response.send_message(f"❌ User not found")
         return
 
     await interaction.response.defer()
-    
+
     try:
         await member.send(
             HONEYPOT_MSG.replace("$username$", member.name).replace("$guild_name$", guild.name)
@@ -498,9 +498,9 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
             delete_message_days=1
         )
     except Exception as e:
-        await interaction.followup.send(f":x: Failed to softban `{member.name}`: `{e}`")
+        await interaction.followup.send(f"❌ Failed to softban `{member.name}`: `{e}`")
     else:
-        await interaction.followup.send(f":white_check_mark: Successfully banned `{member.name}`")
+        await interaction.followup.send(f"✅ Successfully banned `{member.name}`")
         redis_db.incr("honey_eaten")
         honey_eaten = int(redis_db.get("honey_eaten"))
         widupdate = update_widget(honey_eaten)
@@ -538,7 +538,7 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
 @discord.app_commands.allowed_contexts(guilds = True)
 async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
     global log_channel_id
-    
+
     guild = client.get_channel(log_channel_id).guild
     user = discord.Object(id=int(user_id))
 
@@ -554,14 +554,14 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
             description=f"Failed to manually unban <@{user.id}>! - <t:{int(time.time())}:f>\n\n`ID: {user.id}`",
             color=0xD42A2A
         )
-        await interaction.followup.send(f":x: Failed to unban <@{user.id}> from {guild.name}")
+        await interaction.followup.send(f"❌ Failed to unban <@{user.id}> from {guild.name}")
     else:
         embed = discord.Embed(
             title="<:boxg:1548579025700790382> Logs ︱ User unbanned",
             description=f"Manually unbanned (<@{user.id}>)! - <t:{int(time.time())}:f>\n\n`ID: {user.id}`",
             color=0x4CD42A
         )
-        await interaction.followup.send(f":white_check_mark: <@{user.id}> was unbanned from {guild.name}")
+        await interaction.followup.send(f"✅ <@{user.id}> was unbanned from {guild.name}")
     embed.set_footer(text=f"Action performed by @{interaction.user.name} - {interaction.user.id}", icon_url=interaction.user.display_avatar.url)
     await channel.send(embed=embed)
 
@@ -576,7 +576,7 @@ async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
             message = await channel.fetch_message(int(message_url.split("/")[-1]))
             await message.delete()
         except Exception as e:
-            await interaction.response.send_message(f":x: Failed to delete message: `{e}`")
+            await interaction.response.send_message(f"❌ Failed to delete message: `{e}`")
             embed = discord.Embed(
                 title="<:boxg:1548579025700790382> Logs ︱ Failed to delete message",
                 description=f"Failed to manually delete a message! - <t:{int(time.time())}:f>\n\n`Message URL: {message_url}`\n`Error: {e}`",
@@ -584,7 +584,7 @@ async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
             )
             await log_channel.send(embed=embed)
         else:
-            await interaction.response.send_message(f":white_check_mark: Message deleted successfully.")
+            await interaction.response.send_message(f"✅ Message deleted successfully.")
             embed = discord.Embed(
                 title=f"<:boxg:1548579025700790382> Logs ︱ Message manually deleted by {interaction.user.name}",
                 description=f"Manually deleted a message! - <t:{int(time.time())}:f>\n\n`Message URL: {message_url}`",
@@ -594,6 +594,6 @@ async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
                 embed.add_field(name="Message content", value=f"`{message.content if message.content else '(No content)'}`"+(f'\n+{len(message.attachments)} attachments' if message.attachments else ''), inline=False)
             await log_channel.send(embed=embed)
     else:
-        await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+        await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 
 client.run(TOKEN)

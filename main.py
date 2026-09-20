@@ -298,7 +298,7 @@ intents = discord.Intents.default()
 intents.presences = True
 intents.members = True
 
-client = Client("", intents=intents, chunk_guilds_at_startup=False)
+client = Client("", intents=intents)
 client.log_channel = None
 
 # ======================= commands =======================

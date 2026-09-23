@@ -596,4 +596,94 @@ async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
     else:
         await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 
+@client.tree.command(name="message", description="📦 Send a message to a specific channel or user", guild=discord.Object(id=banner_cmd_guild_id))
+@discord.app_commands.describe(
+    id="The ID or mention of the target channel or user",
+    message="The message you want to send",
+    dm="Set to True to send a DM to a user (False by default)"
+)
+@discord.app_commands.allowed_contexts(guilds = True)
+async def message_cmd(interaction: discord.Interaction, id: str, message: str, dm: bool = False):
+    if interaction.user.guild_permissions.administrator or interaction.user.id in banner_admins:
+        try:
+            if dm:
+                # Clears user mentions like <@123> or <@!123>
+                clean_id = id.replace("<@", "").replace("!", "").replace(">", "").strip()
+                
+                target_user = client.get_user(int(clean_id))
+                if not target_user:
+                    target_user = await client.fetch_user(int(clean_id))
+
+                await target_user.send(message)
+                await interaction.response.send_message(
+                    f"✅ DM sent successfully to <@{clean_id}>!"
+                )
+            else:
+                # Clean channel mention format to get the raw ID
+                clean_id = id.replace("<#", "").replace(">", "").strip()
+                
+                target_channel = client.get_channel(int(clean_id))
+                if not target_channel:
+                    target_channel = await client.fetch_channel(int(clean_id))
+
+                if isinstance(target_channel, discord.TextChannel):
+                    await target_channel.send(message)
+                    await interaction.response.send_message(
+                        f"✅ Message sent successfully to <#{clean_id}>!"
+                    )
+                else:
+                    await interaction.response.send_message(
+                        "❌ The provided ID does not belong to a valid text channel."
+                    )
+                    
+        except ValueError:
+            await interaction.response.send_message("❌ Invalid ID or mention format.")
+        except discord.NotFound:
+            await interaction.response.send_message("❌ Target not found. Please check the ID.")
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ I don't have permissions to send this message (or the user closed their DMs).")
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Failed to send message: `{e}`")
+    else:
+        await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+
+@client.tree.command(name="edit", description="📦 Edit a message sent by the bot using the message link", guild=discord.Object(id=banner_cmd_guild_id))
+@discord.app_commands.describe(
+    message_url="The link to the message you want to edit",
+    new_message="The new message"
+)
+@discord.app_commands.allowed_contexts(guilds = True)
+async def edit_cmd(interaction: discord.Interaction, message_url: str, new_message: str):
+    if interaction.user.guild_permissions.administrator or interaction.user.id in banner_admins:
+        try:
+            # Extracts the channel ID and message ID from the URL
+            channel_id = int(message_url.split("/")[-2])
+            message_id = int(message_url.split("/")[-1])
+            
+            channel = client.get_channel(channel_id)
+            if not channel:
+                channel = await client.fetch_channel(channel_id)
+                
+            message_obj = await channel.fetch_message(message_id)
+
+            if message_obj.author.id == client.user.id:
+                await message_obj.edit(content=new_message)
+                await interaction.response.send_message(
+                    f"✅ Message edited successfully!\n🔗 {message_url}"
+                )
+            else:
+                await interaction.response.send_message(
+                    "❌ That message is not sent by me."
+                )
+        except (ValueError, IndexError):
+            await interaction.response.send_message("❌ Invalid message link format.")
+        except discord.NotFound:
+            await interaction.response.send_message("❌ Message or channel not found.")
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ The bot does not have permissions to edit this message or access the channel.")
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Failed to edit message: `{e}`")
+    else:
+        await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+
 client.run(TOKEN)

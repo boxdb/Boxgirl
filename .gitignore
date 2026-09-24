@@ -1,7 +1,8 @@
 unmain.py
+db.json
+vars.json
 .vscode
 .env
 .gitignore
 reference
 indev
-db.json

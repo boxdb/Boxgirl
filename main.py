@@ -187,11 +187,10 @@ async def log(msg:str, channel:discord.TextChannel = None):
         await channel.send(f"{msg}")
 
 class Client(commands.Bot):
-    async def on_ready(self):
-        global online
+    async def setup_hook(self):
         await log("Fetching log channel...")
-        self.log_channel:discord.TextChannel = self.get_channel(log_channel_id)
-        self.hw_channel:discord.TextChannel = self.get_channel(greet_channel_id)
+        self.log_channel:discord.TextChannel = await self.fetch_channel(log_channel_id)
+        self.hw_channel:discord.TextChannel = await self.fetch_channel(greet_channel_id)
         await log("Booting up...", self.hw_channel)
         await log("Syncing global command tree...", self.hw_channel)
         await self.tree.sync()
@@ -200,6 +199,9 @@ class Client(commands.Bot):
         await log("Finished!", self.hw_channel)
         await self.hw_channel.send("## Hello world!")
         print(f"{self.user.name} online")
+    
+    async def on_ready(self):
+        global online
         if online:
             await client.change_presence(
                 status=discord.Status.online,
@@ -298,7 +300,7 @@ intents = discord.Intents.default()
 intents.presences = True
 intents.members = True
 
-client = Client("", intents=intents)
+client = Client("", intents=intents, chunk_guilds_at_startup=False)
 client.log_channel = None
 
 # ======================= commands =======================
@@ -599,51 +601,137 @@ async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
 @client.tree.command(name="message", description="📦 Send a message to a specific channel or user", guild=discord.Object(id=banner_cmd_guild_id))
 @discord.app_commands.describe(
     id="The ID or mention of the target channel or user",
-    message="The message you want to send",
-    dm="Set to True to send a DM to a user (False by default)"
+    message="The message you want to send"
 )
 @discord.app_commands.allowed_contexts(guilds = True)
-async def message_cmd(interaction: discord.Interaction, id: str, message: str, dm: bool = False):
+async def message_cmd(interaction: discord.Interaction, id: str, message: str):
     if interaction.user.guild_permissions.administrator or interaction.user.id in banner_admins:
+        log_channel = client.get_channel(banner_log_channel_id)
+        target_name = ""
+        target_id = None
+        target_type = None
+        target_label = ""
+
         try:
-            if dm:
-                # Clears user mentions like <@123> or <@!123>
-                clean_id = id.replace("<@", "").replace("!", "").replace(">", "").strip()
-                
-                target_user = client.get_user(int(clean_id))
+            raw_id = id.strip()
+
+            if raw_id.startswith("<@") or raw_id.startswith("<@!"):
+                target_type = "user"
+                raw_id = raw_id.replace("<@", "").replace("<@!", "").replace("!", "").replace(">", "").strip()
+            elif raw_id.startswith("<#"):
+                target_type = "channel"
+                raw_id = raw_id.replace("<#", "").replace(">", "").strip()
+            elif raw_id.startswith("@"):
+                target_type = "user"
+                raw_id = raw_id.replace("@", "").strip()
+            elif raw_id.startswith("#"):
+                target_type = "channel"
+                raw_id = raw_id.replace("#", "").strip()
+
+            target_id = int(raw_id)
+
+            if target_type == "user":
+                target_user = client.get_user(target_id)
                 if not target_user:
-                    target_user = await client.fetch_user(int(clean_id))
+                    target_user = await client.fetch_user(target_id)
+
+                target_name = target_user.name
+                target_id = target_user.id
+                target_label = f"<@{target_user.id}>"
 
                 await target_user.send(message)
-                await interaction.response.send_message(
-                    f"✅ DM sent successfully to <@{clean_id}>!"
-                )
-            else:
-                # Clean channel mention format to get the raw ID
-                clean_id = id.replace("<#", "").replace(">", "").strip()
-                
-                target_channel = client.get_channel(int(clean_id))
+                await interaction.response.send_message(f"✅ DM sent successfully to <@{target_user.id}>!")
+            elif target_type == "channel":
+                target_channel = client.get_channel(target_id)
                 if not target_channel:
-                    target_channel = await client.fetch_channel(int(clean_id))
+                    target_channel = await client.fetch_channel(target_id)
 
-                if isinstance(target_channel, discord.TextChannel):
+                if not isinstance(target_channel, discord.TextChannel):
+                    raise ValueError("The provided ID does not belong to a valid text channel.")
+
+                target_name = f"#{target_channel.name}"
+                target_id = target_channel.id
+                target_label = f"<#{target_channel.id}>"
+
+                await target_channel.send(message)
+                await interaction.response.send_message(f"✅ Message sent successfully to <#{target_channel.id}>!")
+            else:
+                target_user = client.get_user(target_id)
+                if not target_user:
+                    try:
+                        target_user = await client.fetch_user(target_id)
+                    except discord.NotFound:
+                        target_user = None
+
+                target_channel = client.get_channel(target_id)
+                if not target_channel:
+                    try:
+                        target_channel = await client.fetch_channel(target_id)
+                    except discord.NotFound:
+                        target_channel = None
+
+                if target_user is not None:
+                    target_type = "user"
+                    target_name = target_user.name
+                    target_id = target_user.id
+                    target_label = f"<@{target_user.id}>"
+                    await target_user.send(message)
+                    await interaction.response.send_message(f"✅ DM sent successfully to <@{target_user.id}>!")
+                elif target_channel is not None and isinstance(target_channel, discord.TextChannel):
+                    target_type = "channel"
+                    target_name = f"#{target_channel.name}"
+                    target_id = target_channel.id
+                    target_label = f"<#{target_channel.id}>"
                     await target_channel.send(message)
-                    await interaction.response.send_message(
-                        f"✅ Message sent successfully to <#{clean_id}>!"
-                    )
+                    await interaction.response.send_message(f"✅ Message sent successfully to <#{target_channel.id}>!")
                 else:
-                    await interaction.response.send_message(
-                        "❌ The provided ID does not belong to a valid text channel."
-                    )
-                    
+                    raise discord.NotFound
+
+            embed = discord.Embed(
+                title=f"<:boxg:1548579025700790382> Logs ︱ Message sent by {interaction.user.name}",
+                description=f"A message was sent to {target_name} ({target_label}) by {interaction.user.name} (<@{interaction.user.id}>) - <t:{int(time.time())}:f>\n\n`Target ID: {target_id}`",
+                color=0x5B0BAA
+            )
+            embed.add_field(name="Message content", value=f"```\n{message[:1024]}\n```", inline=False)
+            embed.set_footer(text=f"Action performed by @{interaction.user.name} - {interaction.user.id}", icon_url=interaction.user.display_avatar.url)
+            await log_channel.send(embed=embed)
+
         except ValueError:
             await interaction.response.send_message("❌ Invalid ID or mention format.")
+            embed = discord.Embed(
+                title="<:boxg:1548579025700790382> Logs ︱ Failed to send message",
+                description=f"Failed to send a message from {interaction.user.name} (<@{interaction.user.id}>) due to an invalid ID/mention format - <t:{int(time.time())}:f>\n\n`Input: {id}`",
+                color=0xD42A2A
+            )
+            embed.set_footer(text=f"Action performed by @{interaction.user.name} - {interaction.user.id}", icon_url=interaction.user.display_avatar.url)
+            await log_channel.send(embed=embed)
         except discord.NotFound:
             await interaction.response.send_message("❌ Target not found. Please check the ID.")
+            embed = discord.Embed(
+                title="<:boxg:1548579025700790382> Logs ︱ Failed to send message",
+                description=f"Failed to send a message from {interaction.user.name} (<@{interaction.user.id}>) because the target was not found - <t:{int(time.time())}:f>\n\n`Input: {id}`",
+                color=0xD42A2A
+            )
+            embed.set_footer(text=f"Action performed by @{interaction.user.name} - {interaction.user.id}", icon_url=interaction.user.display_avatar.url)
+            await log_channel.send(embed=embed)
         except discord.Forbidden:
             await interaction.response.send_message("❌ I don't have permissions to send this message (or the user closed their DMs).")
+            embed = discord.Embed(
+                title="<:boxg:1548579025700790382> Logs ︱ Failed to send message",
+                description=f"Failed to send a message from {interaction.user.name} (<@{interaction.user.id}>) due to missing permissions or DMs closed - <t:{int(time.time())}:f>\n\n`Target: {id}`",
+                color=0xD42A2A
+            )
+            embed.set_footer(text=f"Action performed by @{interaction.user.name} - {interaction.user.id}", icon_url=interaction.user.display_avatar.url)
+            await log_channel.send(embed=embed)
         except Exception as e:
             await interaction.response.send_message(f"❌ Failed to send message: `{e}`")
+            embed = discord.Embed(
+                title="<:boxg:1548579025700790382> Logs ︱ Failed to send message",
+                description=f"Failed to send a message from {interaction.user.name} (<@{interaction.user.id}>) - <t:{int(time.time())}:f>\n\n`Target: {id}`\n`Error: {e}`",
+                color=0xD42A2A
+            )
+            embed.set_footer(text=f"Action performed by @{interaction.user.name} - {interaction.user.id}", icon_url=interaction.user.display_avatar.url)
+            await log_channel.send(embed=embed)
     else:
         await interaction.response.send_message(f"⛔ You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 

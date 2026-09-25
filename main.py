@@ -689,7 +689,7 @@ async def message_cmd(interaction: discord.Interaction, id: str, message: str):
 
             embed = discord.Embed(
                 title=f"<:boxg:1548579025700790382> Logs ︱ Message sent by {interaction.user.name}",
-                description=f"A message was sent to {target_name} ({target_label}) by {interaction.user.name} (<@{interaction.user.id}>) - <t:{int(time.time())}:f>\n\n`Target ID: {target_id}`",
+                description=f"A message was sent to {target_name} ({target_label}) - <t:{int(time.time())}:f>\n\n`🎯ID: {target_id}`",
                 color=0x5B0BAA
             )
             embed.add_field(name="Message content", value=f"```\n{message[:1024]}\n```", inline=False)
@@ -757,7 +757,7 @@ async def edit_cmd(interaction: discord.Interaction, message_url: str, new_messa
             if message_obj.author.id == client.user.id:
                 await message_obj.edit(content=new_message)
                 await interaction.response.send_message(
-                    f"✅ Message edited successfully!\n🔗 {message_url}"
+                    f"✅ Message edited successfully!\n-# > {message_url}"
                 )
             else:
                 await interaction.response.send_message(
@@ -768,7 +768,7 @@ async def edit_cmd(interaction: discord.Interaction, message_url: str, new_messa
         except discord.NotFound:
             await interaction.response.send_message("❌ Message or channel not found.")
         except discord.Forbidden:
-            await interaction.response.send_message("❌ The bot does not have permissions to edit this message or access the channel.")
+            await interaction.response.send_message("❌ I don't have permissions to access the channel.")
         except Exception as e:
             await interaction.response.send_message(f"❌ Failed to edit message: `{e}`")
     else:

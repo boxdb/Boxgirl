@@ -22,11 +22,11 @@ variables:dict = json.load(open("./vars.json", "r"))
 
 engine_kingdom_guild_id:int = variables["engine_kingdom_guild_id"]
 tracked_user_id:int       = variables["tracked_user_id"]
-log_channel_id:int        = variables["log_channel_id"]
+status_channel_id:int     = variables["status_channel_id"]
 greet_channel_id:int      = variables["greet_channel_id"]
 role_ping_id:int          = variables["role_ping_id"]
 banner_cmd_guild_id:int   = variables["banner_cmd_guild_id"]
-banner_log_channel_id:int = variables["banner_log_channel_id"]
+log_channel_id:int        = variables["log_channel_id"]
 banner_admins:list        = variables["banner_admins"]
 banner_allowed_roles:list = variables["banner_allowed_roles"]
 banner_delay_hours:int    = variables["banner_delay_hours"]
@@ -111,11 +111,11 @@ def update_db():
 def update_vars():
     global engine_kingdom_guild_id
     global tracked_user_id
-    global log_channel_id
+    global status_channel_id
     global greet_channel_id
     global role_ping_id
     global banner_cmd_guild_id
-    global banner_log_channel_id
+    global log_channel_id
     global banner_admins
     global banner_allowed_roles
     global banner_delay_hours
@@ -126,10 +126,10 @@ def update_vars():
     variables = json.load(open("./vars.json", "r"))
     engine_kingdom_guild_id = variables["engine_kingdom_guild_id"]
     tracked_user_id       = variables["tracked_user_id"]
-    log_channel_id        = variables["log_channel_id"]
+    status_channel_id        = variables["status_channel_id"]
     role_ping_id          = variables["role_ping_id"]
     banner_cmd_guild_id   = variables["banner_cmd_guild_id"]
-    banner_log_channel_id = variables["banner_log_channel_id"]
+    log_channel_id = variables["log_channel_id"]
     banner_admins         = variables["banner_admins"]
     banner_allowed_roles  = variables["banner_allowed_roles"]
     banner_delay_hours    = variables["banner_delay_hours"]
@@ -137,8 +137,8 @@ def update_vars():
     honeypot_immune_roles = variables["honeypot_immune_roles"]
     honeypot_delete_channels = variables["honeypot_delete_channels"]
 
-    if client and client.log_channel and client.log_channel.id != log_channel_id:
-        client.log_channel = client.get_channel(log_channel_id)
+    if client and client.log_channel and client.log_channel.id != status_channel_id:
+        client.log_channel = client.get_channel(status_channel_id)
 
 def update_widget(amount:int):
     data:str = json.dumps(json.loads(requests.get(WIDG_URL).content.decode().replace("$honey_eaten$", str(amount))))
@@ -154,7 +154,7 @@ async def offline_to_online():
         activity=(discord.CustomActivity(f"Banner by {banner_changer_name}") if banner_changer_name else None)
     )
     try:
-        await client.get_channel(log_channel_id).get_partial_message(last_msg_id).delete()
+        await client.get_channel(status_channel_id).get_partial_message(last_msg_id).delete()
         await asyncio.sleep(1)
     except:
         pass
@@ -173,7 +173,7 @@ async def online_to_offline():
         activity=discord.CustomActivity("Servers are down, download levels instead")
     )
     try:
-        await client.get_channel(log_channel_id).get_partial_message(last_msg_id).delete()
+        await client.get_channel(status_channel_id).get_partial_message(last_msg_id).delete()
         await asyncio.sleep(1)
     except:
         pass
@@ -189,7 +189,7 @@ async def log(msg:str, channel:discord.TextChannel = None):
 class Client(commands.Bot):
     async def setup_hook(self):
         await log("Fetching log channel...")
-        self.log_channel:discord.TextChannel = await self.fetch_channel(log_channel_id)
+        self.log_channel:discord.TextChannel = await self.fetch_channel(status_channel_id)
         self.hw_channel:discord.TextChannel = await self.fetch_channel(greet_channel_id)
         await log("Booting up...", self.hw_channel)
         await log("Syncing global command tree...", self.hw_channel)
@@ -273,7 +273,7 @@ class Client(commands.Bot):
             except:
                 pass
 
-        channel = self.get_channel(banner_log_channel_id)
+        channel = self.get_channel(log_channel_id)
 
         await channel.send(embed=embed)
 
@@ -353,13 +353,13 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
     global banner_changer_id
     global banner_changer_name
     global banner_banned
-    global banner_log_channel_id
+    global log_channel_id
     global online
 
     if interaction.guild:
         member = await interaction.guild.fetch_member(interaction.user.id)
     else:
-        channel = await client.fetch_channel(log_channel_id)
+        channel = await client.fetch_channel(status_channel_id)
         guild = channel.guild
         member = await guild.fetch_member(interaction.user.id)
 
@@ -401,7 +401,7 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
                     activity=(discord.CustomActivity(f"Banner by {member.name}") if member.name else None)
                 )
 
-            banner_log_channel = client.get_channel(banner_log_channel_id)
+            banner_log_channel = client.get_channel(log_channel_id)
 
             image_stream = io.BytesIO(img_bytes)
 
@@ -476,9 +476,9 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
 @client.tree.command(name="softban", description="📦 Softban an user from Engine Kingdom", guild=discord.Object(id=banner_cmd_guild_id))
 @discord.app_commands.allowed_contexts(guilds = True)
 async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
-    global log_channel_id
+    global status_channel_id
 
-    guild = client.get_channel(log_channel_id).guild
+    guild = client.get_channel(status_channel_id).guild
     member = guild.get_member(int(user_id))
     user = client.get_user(int(user_id))
 
@@ -514,7 +514,7 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
     )
     embed.set_footer(text=f"Action performed by @{interaction.user.name} - {interaction.user.id}", icon_url=interaction.user.display_avatar.url)
 
-    channel = client.get_channel(banner_log_channel_id)
+    channel = client.get_channel(log_channel_id)
 
     await channel.send(embed=embed)
 
@@ -540,14 +540,14 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
 @client.tree.command(name="unban", description="📦 Unban an user from Engine Kingdom", guild=discord.Object(id=banner_cmd_guild_id))
 @discord.app_commands.allowed_contexts(guilds = True)
 async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
-    global log_channel_id
+    global status_channel_id
 
-    guild = client.get_channel(log_channel_id).guild
+    guild = client.get_channel(status_channel_id).guild
     user = discord.Object(id=int(user_id))
 
     await interaction.response.defer()
 
-    channel = client.get_channel(banner_log_channel_id)
+    channel = client.get_channel(log_channel_id)
 
     try:
         await guild.unban(user, reason="Baneo temporal del bait de #the-thing finalizado.")
@@ -571,8 +571,8 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
 @client.tree.command(name="delete-msg", description="📦 Delete a message manually", guild=discord.Object(id=banner_cmd_guild_id))
 @discord.app_commands.allowed_contexts(guilds = True)
 async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
-    global banner_log_channel_id
-    log_channel = client.get_channel(banner_log_channel_id)
+    global log_channel_id
+    log_channel = client.get_channel(log_channel_id)
     if interaction.user.id in banner_admins:
         try:
             channel = await client.fetch_channel(int(message_url.split("/")[-2]))
@@ -607,7 +607,7 @@ async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
 @discord.app_commands.allowed_contexts(guilds = True)
 async def message_cmd(interaction: discord.Interaction, id: str, message: str):
     if interaction.user.guild_permissions.administrator or interaction.user.id in banner_admins:
-        log_channel = client.get_channel(banner_log_channel_id)
+        log_channel = client.get_channel(log_channel_id)
         target_name = ""
         target_id = None
         target_type = None

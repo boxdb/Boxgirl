@@ -357,10 +357,11 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
     global online
 
     if interaction.guild:
-        member = interaction.guild.get_member(interaction.user.id)
+        member = await interaction.guild.fetch_member(interaction.user.id)
     else:
-        guild = client.get_channel(log_channel_id).guild
-        member = guild.get_member(interaction.user.id)
+        channel = await client.fetch_channel(log_channel_id)
+        guild = channel.guild
+        member = await guild.fetch_member(interaction.user.id)
 
     if not member:
         await interaction.response.send_message("❌ Couldn't find you in Engine Kingdom.", ephemeral=True)

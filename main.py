@@ -250,6 +250,7 @@ class Client(commands.Bot):
         except:
             pass
 
+        await asyncio.sleep(2)
         await msg.author.ban(
             reason="Cuenta hackeada (cayó en el bait de #the-thing) ban temporal.",
             delete_message_days=1
@@ -333,7 +334,7 @@ async def toggle_track(interaction:discord.Interaction, enable:bool):
 async def catch_up_cmd(interaction:discord.Interaction):
     global online
     if interaction.user.guild_permissions.administrator:
-        member = client.log_channel.guild.get_member(tracked_user_id)
+        member = await client.log_channel.guild.fetch_member(tracked_user_id)
         if member.status.name != "offline" and not online:
             await offline_to_online()
             await interaction.response.send_message("✅ EK-Bot is now **online**, I've updated my message.")
@@ -442,7 +443,7 @@ async def update_vars_cmd(interaction:discord.Interaction):
 async def banner_ban_cmd(interaction:discord.Interaction, user_id:str):
     global banner_banned
     if interaction.user.id in banner_admins:
-        user = client.get_user(int(user_id))
+        user = await client.fetch_user(int(user_id))
         if not user:
             await interaction.response.send_message(f"❌ User not found.")
             return
@@ -460,7 +461,7 @@ async def banner_ban_cmd(interaction:discord.Interaction, user_id:str):
 async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
     global banner_banned
     if interaction.user.id in banner_admins:
-        user = client.get_user(int(user_id))
+        user = await client.fetch_user(int(user_id))
         if not user:
             await interaction.response.send_message(f"❌ User not found.")
             return
@@ -479,8 +480,8 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
     global status_channel_id
 
     guild = client.get_channel(status_channel_id).guild
-    member = guild.get_member(int(user_id))
-    user = client.get_user(int(user_id))
+    member = await guild.fetch_member(int(user_id))
+    user = await client.fetch_user(int(user_id))
 
     if not member:
         await interaction.response.send_message(f"❌ User not found")
@@ -497,7 +498,7 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
 
     try:
         await member.ban(
-            reason="Cuenta hackeada (cayó en el bait de #the-thing) ban temporal.",
+            reason=f"Cuenta hackeada, ban temporal (por {interaction.user.name}).",
             delete_message_days=1
         )
     except Exception as e:
@@ -632,9 +633,7 @@ async def message_cmd(interaction: discord.Interaction, id: str, message: str):
             target_id = int(raw_id)
 
             if target_type == "user":
-                target_user = client.get_user(target_id)
-                if not target_user:
-                    target_user = await client.fetch_user(target_id)
+                target_user = await client.fetch_user(target_id)
 
                 target_name = target_user.name
                 target_id = target_user.id
@@ -657,12 +656,10 @@ async def message_cmd(interaction: discord.Interaction, id: str, message: str):
                 await target_channel.send(message)
                 await interaction.response.send_message(f"✅ Message sent successfully to <#{target_channel.id}>!")
             else:
-                target_user = client.get_user(target_id)
-                if not target_user:
-                    try:
-                        target_user = await client.fetch_user(target_id)
-                    except discord.NotFound:
-                        target_user = None
+                try:
+                    target_user = await client.fetch_user(target_id)
+                except discord.NotFound:
+                    target_user = None
 
                 target_channel = client.get_channel(target_id)
                 if not target_channel:

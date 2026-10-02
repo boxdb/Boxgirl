@@ -373,7 +373,7 @@ async def set_banner_cmd(interaction:discord.Interaction, banner:discord.Attachm
             await interaction.response.send_message("<:banner_restricted:1548578961506832525> You are banned from changing the banner.", ephemeral=True)
             return
 
-        if member.id == banner_changer_id:
+        if member.id == banner_changer_id and not member.id in banner_admins:
             await interaction.response.send_message("❌ You can't change the banner twice in a row.", ephemeral=True)
             return
 

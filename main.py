@@ -45,6 +45,8 @@ banner_changer_id:int   = db["banner_changer_id"]
 banner_changer_name:str = db["banner_changer_name"]
 banner_banned:list      = db["banner_banned"]
 
+temp_banneds:list[int] = []
+
 # ==================== change zeez ====================
 ONLINE_MSG = f"""
 # ✅ ¡Los Servidores han vuelto!
@@ -230,6 +232,11 @@ class Client(commands.Bot):
 
         if msg.channel.id != honeypot_channel_id:
             return
+        
+        if msg.author.id in temp_banneds:
+            return
+        
+        temp_banneds.append(msg.author.id)
 
         try:
             await msg.guild.fetch_ban(msg.author)
@@ -295,6 +302,7 @@ class Client(commands.Bot):
                 color=0x4CD42A
             )
         await channel.send(embed=embed)
+        temp_banneds.remove(msg.author.id)
 
 
 intents = discord.Intents.default()

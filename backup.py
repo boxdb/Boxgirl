@@ -29,6 +29,7 @@ honeypot_immune_roles:list = variables["honeypot_immune_roles"]
 honeypot_delete_channels:list = variables["honeypot_delete_channels"]
 
 redis_db = redis.Redis.from_url(REDIS_URL)
+temp_banneds:list[int] = []
 
 # ==================== change zeez ====================
 HONEYPOT_MSG = """
@@ -93,11 +94,17 @@ class Client(commands.Bot):
         if msg.channel.id != honeypot_channel_id:
             return
 
+        if msg.author.id in temp_banneds:
+            return
+
+        temp_banneds.append(msg.author.id)
+
         try:
             await msg.guild.fetch_ban(msg.author)
         except:
             pass
         else:
+            temp_banneds.remove(msg.author.id)
             return
 
         try:
@@ -111,6 +118,8 @@ class Client(commands.Bot):
             await msg.delete()
         except:
             pass
+
+        await asyncio.sleep(2)
 
         await msg.author.ban(
             reason="Cuenta hackeada (cayó en el bait de #the-thing) ban temporal.",
@@ -155,6 +164,7 @@ class Client(commands.Bot):
                 color=0x4CD42A
             )
         await channel.send(embed=embed)
+        temp_banneds.remove(msg.author.id)
 
 
 intents = discord.Intents.default()
@@ -206,15 +216,18 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
 
 @client.tree.command(name="softban", description="📦 Softban an user from Engine Kingdom", guild=discord.Object(id=banner_cmd_guild_id))
 @discord.app_commands.allowed_contexts(guilds = True)
-async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
-    global log_channel_id
-    
+async def softban_cmd(interaction:discord.Interaction, user_id:str):
     guild = client.get_channel(log_channel_id).guild
     member = guild.get_member(int(user_id))
-    user = client.get_user(int(user_id))
-    
+    if member is None:
+        try:
+            member = await guild.fetch_member(int(user_id))
+        except discord.NotFound:
+            await interaction.response.send_message(":x: User not found")
+            return
+
     if not member:
-        await interaction.response.send_message(f":x: User not found")
+        await interaction.response.send_message(":x: User not found")
         return
 
     await interaction.response.defer()
@@ -233,10 +246,11 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
         )
     except Exception as e:
         await interaction.followup.send(f":x: Failed to softban `{member.name}`: `{e}`")
-    else:
-        await interaction.followup.send(f":white_check_mark: Successfully banned `{member.name}`")
-        redis_db.incr("honey_eaten")
-        honey_eaten = int(redis_db.get("honey_eaten"))
+        return
+
+    await interaction.followup.send(f":white_check_mark: Successfully banned `{member.name}`")
+    redis_db.incr("honey_eaten")
+    honey_eaten = int(redis_db.get("honey_eaten"))
     embed = discord.Embed(
         title=f"<:boxg:1502150406523064401> Logs ︱ Manual softban by {interaction.user.name}",
         description=f"{member.name} (<@{member.id}>) was banned! - <t:{int(time.time())}:f>\n\n`ID: {member.id}`\nBans performed: `{honey_eaten}`",
@@ -251,7 +265,7 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
     await asyncio.sleep(5)
 
     try:
-        await guild.unban(user, reason="Baneo temporal del bait de #the-thing finalizado.")
+        await guild.unban(discord.Object(id=member.id), reason="Baneo temporal del bait de #the-thing finalizado.")
     except:
         embed = discord.Embed(
             title="<:boxg:1502150406523064401> Logs ︱ Failed to unban user",
@@ -269,8 +283,7 @@ async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
 
 @client.tree.command(name="unban", description="📦 Unban an user from Engine Kingdom", guild=discord.Object(id=banner_cmd_guild_id))
 @discord.app_commands.allowed_contexts(guilds = True)
-async def banner_unban_cmd(interaction:discord.Interaction, user_id:str):
-    global log_channel_id
+async def unban_cmd(interaction:discord.Interaction, user_id:str):
     
     guild = client.get_channel(log_channel_id).guild
     user = discord.Object(id=int(user_id))
@@ -326,6 +339,149 @@ async def delete_msg_cmd(interaction:discord.Interaction, message_url:str):
             if client.intents.message_content:
                 embed.add_field(name="Message content", value=f"`{message.content if message.content else '(No content)'}`"+(f'+{len(message.attachments)} attachments' if message.attachments else ''), inline=False)
             await log_channel.send(embed=embed)
+    else:
+        await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+
+@client.tree.command(name="message", description="📦 Send a message to a specific channel or user", guild=discord.Object(id=banner_cmd_guild_id))
+@discord.app_commands.describe(
+    id="The ID or mention of the target channel or user",
+    message="The message you want to send"
+)
+@discord.app_commands.allowed_contexts(guilds = True)
+async def message_cmd(interaction:discord.Interaction, id:str, message:str):
+    if interaction.user.guild_permissions.administrator or interaction.user.id in banner_admins:
+        log_channel = client.get_channel(log_channel_id)
+        target_name = ""
+        target_id = None
+        target_label = ""
+
+        async def respond(content:str):
+            if interaction.response.is_done():
+                await interaction.followup.send(content)
+            else:
+                await interaction.response.send_message(content)
+
+        try:
+            raw_id = id.strip()
+            target_type = None
+
+            if raw_id.startswith("<@"):
+                target_type = "user"
+                raw_id = raw_id.replace("<@", "").replace("<@!", "").replace("!", "").replace(">", "").strip()
+            elif raw_id.startswith("<#"):
+                target_type = "channel"
+                raw_id = raw_id.replace("<#", "").replace(">", "").strip()
+            elif raw_id.startswith("@"):
+                target_type = "user"
+                raw_id = raw_id.replace("@", "").strip()
+            elif raw_id.startswith("#"):
+                target_type = "channel"
+                raw_id = raw_id.replace("#", "").strip()
+
+            target_id = int(raw_id)
+
+            if target_type == "user":
+                target_user = await client.fetch_user(target_id)
+                target_name = target_user.name
+                target_id = target_user.id
+                target_label = f"<@{target_user.id}>"
+                await target_user.send(message)
+                await respond(f":white_check_mark: DM sent successfully to <@{target_user.id}>!")
+            elif target_type == "channel":
+                target_channel = client.get_channel(target_id)
+                if not target_channel:
+                    target_channel = await client.fetch_channel(target_id)
+
+                if not isinstance(target_channel, discord.TextChannel):
+                    raise ValueError("The provided ID does not belong to a valid text channel.")
+
+                target_name = f"#{target_channel.name}"
+                target_id = target_channel.id
+                target_label = f"<#{target_channel.id}>"
+                await target_channel.send(message)
+                await respond(f":white_check_mark: Message sent successfully to <#{target_channel.id}>!")
+            else:
+                try:
+                    target_user = await client.fetch_user(target_id)
+                except discord.NotFound:
+                    target_user = None
+
+                target_channel = client.get_channel(target_id)
+                if not target_channel:
+                    try:
+                        target_channel = await client.fetch_channel(target_id)
+                    except discord.NotFound:
+                        target_channel = None
+
+                if target_user is not None:
+                    target_type = "user"
+                    target_name = target_user.name
+                    target_id = target_user.id
+                    target_label = f"<@{target_user.id}>"
+                    await target_user.send(message)
+                    await respond(f":white_check_mark: DM sent successfully to <@{target_user.id}>!")
+                elif isinstance(target_channel, discord.TextChannel):
+                    target_type = "channel"
+                    target_name = f"#{target_channel.name}"
+                    target_id = target_channel.id
+                    target_label = f"<#{target_channel.id}>"
+                    await target_channel.send(message)
+                    await respond(f":white_check_mark: Message sent successfully to <#{target_channel.id}>!")
+                else:
+                    await respond(":x: Target not found. Please check the ID.")
+                    return
+
+            embed = discord.Embed(
+                title=f"<:boxg:1502150406523064401> Logs ︱ Message sent by {interaction.user.name}",
+                description=f"A message was sent to {target_name} ({target_label}) - <t:{int(time.time())}:f>\n\n`🎯ID: {target_id}`",
+                color=0x5B0BAA
+            )
+            embed.add_field(name="Message content", value=f"```\n{message[:1024]}\n```", inline=False)
+            embed.set_footer(text=f"Action performed by @{interaction.user.name} - {interaction.user.id}", icon_url=interaction.user.display_avatar.url)
+            await log_channel.send(embed=embed)
+
+        except ValueError:
+            await respond(":x: Invalid ID or mention format.")
+        except discord.NotFound:
+            await respond(":x: Target not found. Please check the ID.")
+        except discord.Forbidden:
+            await respond(":x: I don't have permissions to send this message (or the user closed their DMs).")
+        except Exception as e:
+            await respond(f":x: Failed to send message: `{e}`")
+    else:
+        await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
+
+@client.tree.command(name="edit", description="📦 Edit a message sent by the bot using the message link", guild=discord.Object(id=banner_cmd_guild_id))
+@discord.app_commands.describe(
+    message_url="The link to the message you want to edit",
+    new_message="The new message"
+)
+@discord.app_commands.allowed_contexts(guilds = True)
+async def edit_cmd(interaction:discord.Interaction, message_url:str, new_message:str):
+    if interaction.user.guild_permissions.administrator or interaction.user.id in banner_admins:
+        try:
+            channel_id = int(message_url.split("/")[-2])
+            message_id = int(message_url.split("/")[-1])
+
+            channel = client.get_channel(channel_id)
+            if not channel:
+                channel = await client.fetch_channel(channel_id)
+
+            message_obj = await channel.fetch_message(message_id)
+
+            if message_obj.author.id == client.user.id:
+                await message_obj.edit(content=new_message)
+                await interaction.response.send_message(f":white_check_mark: Message edited successfully!\n-# > {message_url}")
+            else:
+                await interaction.response.send_message(":x: That message is not sent by me.")
+        except (ValueError, IndexError):
+            await interaction.response.send_message(":x: Invalid message link format.")
+        except discord.NotFound:
+            await interaction.response.send_message(":x: Message or channel not found.")
+        except discord.Forbidden:
+            await interaction.response.send_message(":x: I don't have permissions to access the channel.")
+        except Exception as e:
+            await interaction.response.send_message(f":x: Failed to edit message: `{e}`")
     else:
         await interaction.response.send_message(f":no_entry: You don't have permission to use this command\n-# Are you trying to make an account? use **</setup:1199514841363255340>**.", ephemeral=True)
 
